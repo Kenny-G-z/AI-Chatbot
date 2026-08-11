@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Chatbot</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                ignoreHtmlClass: 'tex2jax_ignore',
+                processHtmlClass: 'tex2jax_process'
+            }
+        };
+    </script>
+    
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+
+<body>
+<div id="chat-container">
+    <h2>Kenny's Chatbot</h2>
+
+    <div id="chat-box" class="tex2jax_process"></div>
+    
+    <div id="input-container">
+        <input type="text" id="user-input" placeholder="Type a message..." onkeydown="if(event.key === 'Enter') sendMessage()">
+        <button onclick="sendMessage()">Send</button>
+    </div>
+</div>
+
+<script>
+marked.use({gfm: true, breaks: true});
+
+async function sendMessage() {
+    const inputField = document.getElementById("user-input");
+    const chatBox = document.getElementById("chat-box");
+    const message = inputField.value.trim();
+    
+    if (!message) return;
+    chatBox.innerHTML += `<div class="message user-msg">${escapeHtml(message)}</div>`;
+    inputField.value = "";
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    const loadingDiv = document.createElement("div");
+    loadingDiv.className = "message bot-msg";
+    loadingDiv.innerText = "Thinking...";
+    chatBox.appendChild(loadingDiv);
+    chatBox.scrollTop = chatBox.scrollHeight;
+
+    try {
+        const response = await fetch("/chat", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ message: message })
+        });
+
+        const data = await response.json();
+        const rawReply = data.reply || "No response received.";
+        loadingDiv.innerHTML = marked.parse(rawReply);
+
+        if (window.MathJax && window.MathJax.typesetPromise) {
+            MathJax.typesetPromise([loadingDiv]).catch((err) => {
+                console.warn('MathJax typesetting warning:', err);
+            });
+        }
+
+    } catch (error) {
+        console.error("Communication error:", error);
+        loadingDiv.innerText = "Error communicating with server.";
+    }
+    
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.innerText = text;
+    return div.innerHTML;
+}
+</script>
+
+<hr class="footer-line">
+
+<footer>
+    <p>Created by Kenny</p>
+    <a href="https://github.com/Kenny-G-z" target="_blank">View my GitHub</a>
+</footer>
+</body>
+
+</html>
